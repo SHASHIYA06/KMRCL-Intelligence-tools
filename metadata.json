@@ -1,0 +1,8 @@
+{
+  "name": "Metro Intelligence",
+  "description": "Next-gen Metro Engineering Document Intelligence system with RAG, Voice Agents, and 3D Visualization.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
