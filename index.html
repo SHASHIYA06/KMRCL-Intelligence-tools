@@ -10,52 +10,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              glass: "rgba(17, 25, 40, 0.75)",
-              glassBorder: "rgba(255, 255, 255, 0.125)",
-              neonBlue: "#00f3ff",
-              neonPurple: "#bc13fe",
-              neonGreen: "#00ff9d",
-              darkBg: "#050b14",
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-            },
-            animation: {
-              'blob': 'blob 10s infinite',
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'float': 'float 6s ease-in-out infinite',
-              'scan': 'scan 2s linear infinite',
-              'spin-slow': 'spin 8s linear infinite',
-            },
-            keyframes: {
-              blob: {
-                '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                '100%': { transform: 'translate(0px, 0px) scale(1)' },
-              },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-15px)' },
-              },
-              scan: {
-                '0%': { transform: 'translateY(-100%)' },
-                '100%': { transform: 'translateY(100%)' },
-              }
-            }
-          },
-        },
-      }
-    </script>
     
     <!-- SheetJS for Excel Processing -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -64,12 +18,28 @@
     <style>
       body {
         background-color: #050b14;
+        background-image: 
+          radial-gradient(circle at 25% 25%, rgba(0, 243, 255, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 75% 75%, rgba(188, 19, 254, 0.1) 0%, transparent 50%);
         color: #fff;
         font-family: 'Inter', sans-serif;
-        overflow: hidden; /* Prevent body scroll, layout handles it */
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
       }
-      .perspective-1000 { perspective: 1000px; }
-      .preserve-3d { transform-style: preserve-3d; }
+      
+      #root {
+        height: 100vh;
+        width: 100vw;
+      }
+      
+      .perspective-1000 { 
+        perspective: 1000px; 
+      }
+      
+      .preserve-3d { 
+        transform-style: preserve-3d; 
+      }
       
       /* Glassmorphism Base */
       .glass-panel {
@@ -78,6 +48,22 @@
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Loading Animation */
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(0, 243, 255, 0.3);
+        border-top: 3px solid #00f3ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     </style>
 
@@ -94,10 +80,15 @@
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
-    <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <div id="root">
+      <!-- Loading fallback -->
+      <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column;">
+        <div class="loading-spinner"></div>
+        <p style="color: #00f3ff; font-size: 14px; margin-top: 10px;">Loading KMRCL Intelligence...</p>
+      </div>
+    </div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

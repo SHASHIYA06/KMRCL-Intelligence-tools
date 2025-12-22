@@ -2,19 +2,156 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# KMRCL Metro Intelligence 🚇
 
-This contains everything you need to run your app locally.
+A cutting-edge AI-powered document analysis and intelligence platform built for Kolkata Metro Rail Corporation Limited (KMRCL). This React-based application provides metro engineers with intelligent document search, analysis, and AI-assisted workflows.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1wB87aKWpvVoVjwlh91G0QMsiV_d7kImz
+## ✨ Features
 
-## Run Locally
+- **🤖 AI-Powered Analysis**: Google Gemini integration for advanced document understanding
+- **📄 Multi-Format Support**: PDF, DOCX, XLSX file processing with intelligent insights
+- **🎯 Intelligence Hub**: Multi-mode AI chat (Engineering, General, Email, Letter drafting)
+- **☁️ Google Drive Integration**: Seamless document management and synchronization
+- **🎤 Voice Agent**: Voice-controlled document selection and analysis
+- **🔐 Role-Based Access**: Admin and User roles with granular permissions
+- **⚡ Circuit Analysis**: Specialized engineering circuit component extraction
+- **🎨 Modern UI**: Glassmorphism design with neon aesthetics and smooth animations
 
-**Prerequisites:**  Node.js
+## 🚀 Quick Start
 
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **npm** or **yarn**
+- **Google Gemini API Key** ([Get one here](https://makersuite.google.com/app/apikey))
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/SHASHIYA06/KMRCL-Intelligence-tools.git
+   cd KMRCL-Intelligence-tools
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+   Edit `.env.local` and add your Gemini API key:
+   ```
+   GEMINI_API_KEY=your_actual_api_key_here
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser**
+   Navigate to `http://localhost:3000`
+
+## 🛠️ Build & Deploy
+
+### Production Build
+```bash
+npm run build
+```
+
+### Preview Production Build
+```bash
+npm run preview
+```
+
+### Deploy to Vercel
+The application is optimized for Vercel deployment. Simply connect your GitHub repository to Vercel and it will automatically deploy.
+
+## 🏗️ Tech Stack
+
+- **Frontend**: React 19.2.1 + TypeScript 5.8.2
+- **Build Tool**: Vite 6.2.0
+- **Styling**: Tailwind CSS + Custom CSS with Glassmorphism
+- **AI Integration**: Google Gemini AI (@google/genai)
+- **Icons**: Lucide React
+- **State Management**: React Hooks (useState, useEffect)
+
+## 📁 Project Structure
+
+```
+├── components/          # Reusable UI components
+│   ├── Layout.tsx      # Main application shell
+│   ├── VoiceAgent.tsx  # Voice interaction interface
+│   └── ...
+├── pages/              # Application views
+│   ├── Dashboard.tsx   # Admin overview
+│   ├── IntelligenceHub.tsx # AI chat interface
+│   └── ...
+├── services/           # Business logic & API integrations
+│   ├── authService.ts  # Authentication
+│   ├── geminiService.ts # AI model communication
+│   └── ...
+├── .kiro/steering/     # AI assistant guidance rules
+└── styles.css          # Global styles & animations
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+- `GEMINI_API_KEY`: Your Google Gemini API key (required)
+- `GOOGLE_SCRIPT_URL`: Custom Google Apps Script URL (optional)
+- `GOOGLE_SHEET_ID`: Google Sheets ID for data storage (optional)
+
+### Tailwind Configuration
+The project uses a custom Tailwind configuration with:
+- Neon color palette (Blue: #00f3ff, Purple: #bc13fe, Green: #00ff9d)
+- Custom animations (blob, pulse-glow, float, scan)
+- Glassmorphism utilities
+- Responsive breakpoints
+
+## 🎨 Design System
+
+### Colors
+- **Primary**: Neon Blue (#00f3ff)
+- **Secondary**: Neon Purple (#bc13fe)
+- **Accent**: Neon Green (#00ff9d)
+- **Background**: Dark Blue (#050b14)
+- **Glass**: rgba(17, 25, 40, 0.6) with backdrop blur
+
+### Typography
+- **Primary**: Inter (300-800 weights)
+- **Monospace**: JetBrains Mono
+
+## 🔐 Authentication
+
+The application supports two user roles:
+- **Admin**: Full access to all features including user management
+- **User**: Limited access based on assigned permissions
+
+Default admin credentials:
+- Access Code: `9799494321`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is proprietary software developed for KMRCL. All rights reserved.
+
+## 👨‍💻 Developer
+
+**Shashi Shekhar Mishra**
+- GitHub: [@SHASHIYA06](https://github.com/SHASHIYA06)
+
+---
+
+<div align="center">
+  <p>Built with ❤️ for KMRCL Metro Engineering Team</p>
+</div>

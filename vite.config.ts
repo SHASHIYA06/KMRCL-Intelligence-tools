@@ -18,6 +18,21 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      css: {
+        postcss: './postcss.config.js',
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              ai: ['@google/genai'],
+              icons: ['lucide-react']
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000,
       }
     };
 });
