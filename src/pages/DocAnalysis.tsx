@@ -82,19 +82,42 @@ export const DocAnalysis: React.FC<DocAnalysisProps> = ({ voiceCommand, onToggle
   const readSpreadsheet = (file: File) => {
       const reader = new FileReader();
       reader.onload = (evt) => {
-          const bstr = evt.target?.result;
-          if (window.XLSX) {
-              const wb = window.XLSX.read(bstr, { type: 'binary' });
-              const wsname = wb.SheetNames[0];
-              const ws = wb.Sheets[wsname];
-              const data = window.XLSX.utils.sheet_to_json(ws);
-              setRawFileContent(data);
-              
-              // Trigger Analysis immediately
-              runAIAnalysis(data, file.name);
-          } else {
-              alert("Excel processor not loaded. Please refresh.");
+          try {
+              const bstr = evt.target?.result;
+              if (window.XLSX) {
+                  const wb = window.XLSX.read(bstr, { type: 'binary' });
+                  const wsname = wb.SheetNames[0];
+                  const ws = wb.Sheets[wsname];
+                  const data = window.XLSX.utils.sheet_to_json(ws, { header: 1 });
+                  
+                  // Convert array of arrays to array of objects for better processing
+                  if (data.length > 1) {
+                      const headers = data[0] as string[];
+                      const rows = data.slice(1) as any[][];
+                      const jsonData = rows.map(row => {
+                          const obj: any = {};
+                          headers.forEach((header, index) => {
+                              obj[header || `Column_${index + 1}`] = row[index] || '';
+                          });
+                          return obj;
+                      });
+                      setRawFileContent(jsonData);
+                      
+                      // Trigger Analysis immediately
+                      runAIAnalysis(jsonData, file.name);
+                  } else {
+                      alert("The Excel file appears to be empty or has no data rows.");
+                  }
+              } else {
+                  alert("Excel processor not loaded. Please refresh the page and try again.");
+              }
+          } catch (error) {
+              console.error("Excel reading error:", error);
+              alert("Error reading Excel file. Please ensure it's a valid .xlsx or .xls file.");
           }
+      };
+      reader.onerror = () => {
+          alert("Error reading file. Please try again.");
       };
       reader.readAsBinaryString(file);
   };
@@ -182,14 +205,40 @@ export const DocAnalysis: React.FC<DocAnalysisProps> = ({ voiceCommand, onToggle
   const runOcrExtraction = async () => {
       if (!ocrFile) return;
       setIsProcessingOcr(true);
-      const reader = new FileReader();
-      reader.onload = async () => {
-          const base64 = (reader.result as string).split(',')[1];
-          const text = await performOCR(base64, ocrFile.type, true);
-          setOcrResult(text);
+      setOcrResult('');
+      
+      try {
+          const reader = new FileReader();
+          reader.onload = async () => {
+              try {
+                  const dataUrl = reader.result as string;
+                  const base64 = dataUrl.split(',')[1];
+                  
+                  if (!base64) {
+                      throw new Error("Failed to convert file to base64");
+                  }
+                  
+                  const text = await performOCR(base64, ocrFile.type, true);
+                  setOcrResult(text);
+              } catch (error: any) {
+                  console.error("OCR processing error:", error);
+                  setOcrResult(`OCR Error: ${error.message || 'Failed to process document'}`);
+              } finally {
+                  setIsProcessingOcr(false);
+              }
+          };
+          
+          reader.onerror = () => {
+              setOcrResult("Error: Failed to read the uploaded file.");
+              setIsProcessingOcr(false);
+          };
+          
+          reader.readAsDataURL(ocrFile);
+      } catch (error: any) {
+          console.error("OCR setup error:", error);
+          setOcrResult(`Setup Error: ${error.message}`);
           setIsProcessingOcr(false);
-      };
-      reader.readAsDataURL(ocrFile);
+      }
   };
 
   // Navigation Logic

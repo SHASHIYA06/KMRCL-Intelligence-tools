@@ -34,50 +34,60 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ isOpen, onClose, onToolC
     setStatus('connecting');
     serviceRef.current = new VoiceAgentService();
     
-    // Refresh file list to ensure agent has latest context
-    // This populates the cache in driveService
-    await fetchDriveFiles('root');
-    const knownFiles = getAllKnownFiles().map(f => f.name);
-
-    serviceRef.current.onStatusChange = (s) => setStatus(s as any);
-    serviceRef.current.onTranscriptionUpdate = (u, m) => {
-        setTranscription(prev => ({
-            user: u || prev.user,
-            model: m || prev.model
-        }));
-    };
-    
-    // Intercept tool calls to update the Live Artifact display
-    const wrappedOnToolCall = async (name: string, args: any) => {
-        if (name === 'draftEmail') {
-            setLiveArtifact({
-                title: `Drafting Email to ${args.to}`,
-                content: `Subject: ${args.topic}\n\nPoints: ${args.keyPoints}`,
-                type: 'email'
-            });
-            setIsMinimized(false); // Pop up to show the artifact
-        }
-        if (name === 'selectDocument') {
-            setLiveArtifact({
-                title: 'File Selected',
-                content: `Opening: ${args.fileName}`,
-                type: 'file'
-            });
-        }
-        
-        if (onToolCall) return onToolCall(name, args);
-        return { status: 'ok' };
-    };
-
-    if (onToolCall) {
-        serviceRef.current.onToolCall = wrappedOnToolCall;
-    }
-
     try {
+      // Refresh file list to ensure agent has latest context
+      await fetchDriveFiles('root');
+      const knownFiles = getAllKnownFiles().map(f => f.name);
+
+      serviceRef.current.onStatusChange = (s) => setStatus(s as any);
+      serviceRef.current.onTranscriptionUpdate = (u, m) => {
+          setTranscription(prev => ({
+              user: u || prev.user,
+              model: m || prev.model
+          }));
+      };
+      
+      // Intercept tool calls to update the Live Artifact display
+      const wrappedOnToolCall = async (name: string, args: any) => {
+          if (name === 'draftEmail') {
+              setLiveArtifact({
+                  title: `Drafting Email to ${args.to}`,
+                  content: `Subject: ${args.topic}\n\nPoints: ${args.keyPoints}`,
+                  type: 'email'
+              });
+              setIsMinimized(false); // Pop up to show the artifact
+          }
+          if (name === 'selectDocument') {
+              setLiveArtifact({
+                  title: 'File Selected',
+                  content: `Opening: ${args.fileName}`,
+                  type: 'file'
+              });
+          }
+          
+          if (onToolCall) return onToolCall(name, args);
+          return { status: 'ok' };
+      };
+
+      if (onToolCall) {
+          serviceRef.current.onToolCall = wrappedOnToolCall;
+      }
+
       await serviceRef.current.connect(userName || 'Engineer', knownFiles);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Voice agent connection error:", e);
       setStatus('error');
+      
+      // Show user-friendly error message
+      if (e.message?.includes('Microphone')) {
+        alert('Microphone access is required for the Voice Agent. Please allow microphone permissions and try again.');
+      } else if (e.message?.includes('Audio not supported')) {
+        alert('Your browser does not support the audio features required for the Voice Agent.');
+      } else if (e.message?.includes('API Key')) {
+        alert('API Key is missing or invalid. Please check your settings.');
+      } else {
+        alert(`Voice Agent connection failed: ${e.message}`);
+      }
     }
   };
 
@@ -139,7 +149,22 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ isOpen, onClose, onToolC
             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neonBlue to-neonPurple">
               VOID AGENT
             </h2>
-            <p className="text-sm text-gray-400 mt-1">Status: {status}</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Status: <span className={`font-bold ${
+                status === 'connected' ? 'text-green-400' : 
+                status === 'connecting' ? 'text-yellow-400' : 
+                status === 'error' ? 'text-red-400' : 'text-gray-500'
+              }`}>
+                {status === 'connected' ? 'Connected & Listening' :
+                 status === 'connecting' ? 'Connecting...' :
+                 status === 'error' ? 'Connection Failed' : 'Disconnected'}
+              </span>
+            </p>
+            {status === 'error' && (
+              <p className="text-xs text-red-400 mt-1">
+                Check microphone permissions and API key
+              </p>
+            )}
           </div>
 
           <div className="relative w-32 h-32 flex items-center justify-center">

@@ -1,5 +1,13 @@
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+
+[![Build Status](https://github.com/SHASHIYA06/KMRCL-Intelligence-tools/workflows/🚀%20CI/CD%20Pipeline/badge.svg)](https://github.com/SHASHIYA06/KMRCL-Intelligence-tools/actions)
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://vercel.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.2.1-blue?logo=react)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.2.0-646CFF?logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+
 </div>
 
 # KMRCL Metro Intelligence 🚇
@@ -53,6 +61,15 @@ A cutting-edge AI-powered document analysis and intelligence platform built for 
 
 5. **Open your browser**
    Navigate to `http://localhost:3000`
+
+## 🌐 Live Demo
+
+🔗 **Production URL**: [Coming Soon - Deploy to Vercel]
+🔗 **Repository**: https://github.com/SHASHIYA06/KMRCL-Intelligence-tools
+
+### Default Login Credentials
+- **Admin Access Code**: `9799494321`
+- **Demo User**: Use the signup form to create a user account
 
 ## 🛠️ Build & Deploy
 

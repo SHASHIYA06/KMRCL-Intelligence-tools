@@ -57,25 +57,52 @@ export const performOCR = async (base64Data: string, mimeType: string, highAccur
   const apiKey = getApiKey();
   if (!apiKey) return "OCR Error: API Key missing. Please ask Admin to configure it.";
 
-  const model = highAccuracy ? 'gemini-3-pro-preview' : 'gemini-2.5-flash';
+  const model = highAccuracy ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
 
   try {
     const response = await safeGenerateContent({
       model: model,
-      contents: {
+      contents: [{
         parts: [
-          { inlineData: { mimeType, data: base64Data } },
-          { text: `Perform high-fidelity Optical Character Recognition (OCR)...` } 
+          { 
+            inlineData: { 
+              mimeType, 
+              data: base64Data 
+            } 
+          },
+          { 
+            text: `Perform high-fidelity Optical Character Recognition (OCR) on this document. Extract all visible text accurately, maintaining the original structure and formatting as much as possible. If this is a technical document, preserve any formulas, measurements, or technical specifications exactly as they appear.
+
+Please provide:
+1. The complete extracted text
+2. Any tables or structured data in a readable format
+3. Note any text that appears unclear or potentially incorrect
+
+Focus on accuracy and completeness.` 
+          }
         ]
-      }
+      }]
     });
-    const result = response?.text || "No text extracted.";
+    
+    const result = response?.response?.text() || "No text could be extracted from this document.";
     logActivityToSheet('ANALYSIS', `Performed OCR on ${mimeType} file.`);
     incrementOcrCount(); // Updates Dashboard Counter
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error("OCR Error:", error);
-    return "Error processing document for OCR.";
+    
+    // More specific error messages
+    if (error.message?.includes('API_KEY')) {
+      return "OCR Error: Invalid API key. Please check your Gemini API configuration.";
+    } else if (error.message?.includes('QUOTA')) {
+      return "OCR Error: API quota exceeded. Please try again later.";
+    } else if (error.message?.includes('SAFETY')) {
+      return "OCR Error: Content blocked by safety filters. Please try a different document.";
+    } else if (error.message?.includes('INVALID_ARGUMENT')) {
+      return "OCR Error: Invalid file format or corrupted file. Please try uploading a clear image or PDF.";
+    } else {
+      return `OCR Error: ${error.message || 'Unknown error occurred during text extraction.'}`;
+    }
   }
 };
 
@@ -352,6 +379,7 @@ export class VoiceAgentService {
   private outputAudioContext: AudioContext | null = null;
   private nextStartTime = 0;
   private sources = new Set<AudioBufferSourceNode>();
+  private mediaStream: MediaStream | null = null;
   
   public onTranscriptionUpdate: ((user: string, model: string) => void) | null = null;
   public onStatusChange: ((status: string) => void) | null = null;
@@ -361,18 +389,33 @@ export class VoiceAgentService {
     if (!getApiKey()) throw new Error("API Key missing");
 
     try {
-        const ai = getAiClient();
-        this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        this.outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        this.onStatusChange?.('connecting');
         
-        // Strict Noise Cancellation Constraints for Voice Agent
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            } 
-        });
+        const ai = getAiClient();
+        
+        // Initialize audio contexts with proper error handling
+        try {
+          this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+          this.outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        } catch (audioError) {
+          console.error("Audio context initialization failed:", audioError);
+          throw new Error("Audio not supported in this browser");
+        }
+        
+        // Request microphone access with better error handling
+        try {
+          this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+              audio: {
+                  echoCancellation: true,
+                  noiseSuppression: true,
+                  autoGainControl: true,
+                  sampleRate: 16000
+              } 
+          });
+        } catch (micError) {
+          console.error("Microphone access denied:", micError);
+          throw new Error("Microphone access required for voice agent");
+        }
         
         // Inject available files into the system instruction for RAG-like awareness
         const fileListContext = availableFiles.length > 0 
@@ -380,99 +423,160 @@ export class VoiceAgentService {
             : "";
 
         this.sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-2.0-flash-exp',
         callbacks: {
             onopen: () => {
                 this.onStatusChange?.('connected');
-                this.startAudioStream(stream);
+                this.startAudioStream(this.mediaStream!);
                 logActivityToSheet('VOICE_COMMAND', 'Voice Session Started');
             },
             onmessage: (msg) => this.handleMessage(msg),
             onclose: () => {
-                this.onStatusChange?.('disconnected');
+                this.onStatusChange?.('idle');
+                this.cleanup();
                 logActivityToSheet('VOICE_COMMAND', 'Voice Session Ended', userName);
             },
-            onerror: (e) => { console.error(e); this.onStatusChange?.('error'); }
+            onerror: (e) => { 
+                console.error("Voice session error:", e); 
+                this.onStatusChange?.('error');
+                this.cleanup();
+            }
         },
         config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
-            systemInstruction: `Address user as "${userName}". Admin is "Shashi".${fileListContext}`,
+            systemInstruction: `You are VOID, an AI assistant for KMRCL Metro Intelligence. Address the user as "${userName}". The admin is "Shashi". Be helpful, concise, and professional. ${fileListContext}`,
             inputAudioTranscription: {},
             outputAudioTranscription: {},
             tools: voiceTools,
         }
         });
+        
+        await this.sessionPromise;
         return this.sessionPromise;
-    } catch (e) {
-        throw e;
+    } catch (e: any) {
+        this.onStatusChange?.('error');
+        this.cleanup();
+        throw new Error(`Voice connection failed: ${e.message}`);
     }
   }
 
   private startAudioStream(stream: MediaStream) {
-    if (!this.inputAudioContext) return;
-    const source = this.inputAudioContext.createMediaStreamSource(stream);
-    const processor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (e) => {
-      const inputData = e.inputBuffer.getChannelData(0);
-      const b64Data = this.pcmToB64(inputData);
-      this.sessionPromise?.then(session => {
-        session.sendRealtimeInput({ media: { mimeType: 'audio/pcm;rate=16000', data: b64Data } });
-      });
-    };
-    source.connect(processor);
-    processor.connect(this.inputAudioContext.destination);
+    if (!this.inputAudioContext || !stream) return;
+    
+    try {
+      const source = this.inputAudioContext.createMediaStreamSource(stream);
+      const processor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
+      
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const b64Data = this.pcmToB64(inputData);
+        this.sessionPromise?.then(session => {
+          session.sendRealtimeInput({ media: { mimeType: 'audio/pcm;rate=16000', data: b64Data } });
+        }).catch(err => {
+          console.error("Audio stream error:", err);
+        });
+      };
+      
+      source.connect(processor);
+      processor.connect(this.inputAudioContext.destination);
+    } catch (error) {
+      console.error("Audio stream setup failed:", error);
+      this.onStatusChange?.('error');
+    }
   }
 
   private async handleMessage(message: LiveServerMessage) {
-    // Audio Playback
-    const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-    if (audioData && this.outputAudioContext) {
-      this.nextStartTime = Math.max(this.nextStartTime, this.outputAudioContext.currentTime);
-      const audioBuffer = await this.decodeAudio(audioData, this.outputAudioContext);
-      const source = this.outputAudioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(this.outputAudioContext.destination);
-      source.start(this.nextStartTime);
-      this.nextStartTime += audioBuffer.duration;
-      this.sources.add(source);
-      source.onended = () => this.sources.delete(source);
-    }
-
-    if (message.serverContent?.outputTranscription?.text || message.serverContent?.inputTranscription?.text) {
-        const uText = message.serverContent?.inputTranscription?.text || '';
-        const mText = message.serverContent?.outputTranscription?.text || '';
-        
-        if (uText.length > 5) logActivityToSheet('VOICE_COMMAND', `User Said: ${uText}`);
-        
-        this.onTranscriptionUpdate?.(uText, mText);
-    }
-
-    if (message.toolCall) {
-      for (const fc of message.toolCall.functionCalls) {
-        logActivityToSheet('VOICE_COMMAND', `Tool Executed: ${fc.name}`, 'System');
-        let result = { status: 'ok', message: 'Action executed' };
-        if (this.onToolCall) {
-          try { result = await this.onToolCall(fc.name, fc.args); } catch (e: any) { result = { status: 'error', message: e.message }; }
-        }
-        this.sessionPromise?.then(session => {
-          session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: { result } }] });
-        });
+    try {
+      // Audio Playback
+      const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+      if (audioData && this.outputAudioContext) {
+        this.nextStartTime = Math.max(this.nextStartTime, this.outputAudioContext.currentTime);
+        const audioBuffer = await this.decodeAudio(audioData, this.outputAudioContext);
+        const source = this.outputAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(this.outputAudioContext.destination);
+        source.start(this.nextStartTime);
+        this.nextStartTime += audioBuffer.duration;
+        this.sources.add(source);
+        source.onended = () => this.sources.delete(source);
       }
+
+      // Transcription Updates
+      if (message.serverContent?.outputTranscription?.text || message.serverContent?.inputTranscription?.text) {
+          const uText = message.serverContent?.inputTranscription?.text || '';
+          const mText = message.serverContent?.outputTranscription?.text || '';
+          
+          if (uText.length > 5) logActivityToSheet('VOICE_COMMAND', `User Said: ${uText}`);
+          
+          this.onTranscriptionUpdate?.(uText, mText);
+      }
+
+      // Tool Calls
+      if (message.toolCall) {
+        for (const fc of message.toolCall.functionCalls) {
+          logActivityToSheet('VOICE_COMMAND', `Tool Executed: ${fc.name}`, 'System');
+          let result = { status: 'ok', message: 'Action executed' };
+          if (this.onToolCall) {
+            try { 
+              result = await this.onToolCall(fc.name, fc.args); 
+            } catch (e: any) { 
+              result = { status: 'error', message: e.message }; 
+            }
+          }
+          this.sessionPromise?.then(session => {
+            session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: { result } }] });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Message handling error:", error);
+    }
+  }
+
+  private cleanup() {
+    // Stop all audio sources
+    this.sources.forEach(s => {
+      try { s.stop(); } catch (e) { /* ignore */ }
+    });
+    this.sources.clear();
+    
+    // Close audio contexts
+    if (this.inputAudioContext) {
+      this.inputAudioContext.close().catch(e => console.error("Input audio context close error:", e));
+      this.inputAudioContext = null;
+    }
+    if (this.outputAudioContext) {
+      this.outputAudioContext.close().catch(e => console.error("Output audio context close error:", e));
+      this.outputAudioContext = null;
+    }
+    
+    // Stop media stream
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
     }
   }
 
   async disconnect() {
-    this.sources.forEach(s => s.stop());
-    this.sources.clear();
-    await this.inputAudioContext?.close();
-    await this.outputAudioContext?.close();
+    this.cleanup();
+    if (this.sessionPromise) {
+      try {
+        const session = await this.sessionPromise;
+        if (session && session.close) {
+          session.close();
+        }
+      } catch (e) {
+        console.error("Session close error:", e);
+      }
+      this.sessionPromise = null;
+    }
   }
 
   private pcmToB64(data: Float32Array): string {
     const l = data.length;
     const int16 = new Int16Array(l);
-    for (let i = 0; i < l; i++) { int16[i] = data[i] * 32768; }
+    for (let i = 0; i < l; i++) { int16[i] = Math.max(-32768, Math.min(32767, data[i] * 32768)); }
     let binary = '';
     const bytes = new Uint8Array(int16.buffer);
     const len = bytes.byteLength;
